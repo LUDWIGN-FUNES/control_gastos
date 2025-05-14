@@ -1,56 +1,49 @@
 import 'package:flutter/material.dart';
 import 'package:control_gastos/database/database_helper.dart';
-import 'package:intl/intl.dart';
 
-class AddExpenseScreen extends StatefulWidget {
+class EditExpenseScreen extends StatefulWidget {
+  final Map<String, dynamic> gasto;
+
+  EditExpenseScreen({required this.gasto});
+
   @override
-  _AddExpenseScreenState createState() => _AddExpenseScreenState();
+  _EditExpenseScreenState createState() => _EditExpenseScreenState();
 }
 
-class _AddExpenseScreenState extends State<AddExpenseScreen> {
+class _EditExpenseScreenState extends State<EditExpenseScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _descriptionController = TextEditingController();
-  final _amountController = TextEditingController();
-  String _category = "Alimentación";
-  DateTime? _selectedDate;
+  late TextEditingController _descriptionController;
+  late TextEditingController _amountController;
+  String _category = "";
 
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
-    if (picked != null) {
-      setState(() {
-        _selectedDate = picked;
-      });
-    }
+  @override
+  void initState() {
+    super.initState();
+    _descriptionController = TextEditingController(text: widget.gasto['descripcion']);
+    _amountController = TextEditingController(text: widget.gasto['monto'].toString());
+    _category = widget.gasto['categoria'];
   }
 
-  void _guardarGasto() async {
-    if (_formKey.currentState!.validate() && _selectedDate != null) {
+  void _updateGasto() async {
+    if (_formKey.currentState!.validate()) {
       final dbHelper = DatabaseHelper();
-      final nuevoGasto = {
+      final gastoActualizado = {
+        'id': widget.gasto['id'],
         'descripcion': _descriptionController.text.trim(),
         'categoria': _category,
         'monto': double.parse(_amountController.text),
-        'fecha': _selectedDate!.toIso8601String(),
+        'fecha': widget.gasto['fecha'], // Mantener la fecha original
       };
 
-      await dbHelper.insertGasto(nuevoGasto);
+      await dbHelper.updateGasto(gastoActualizado);
       Navigator.pop(context, true);
-    } else if (_selectedDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Seleccione una fecha para el gasto')),
-      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Agregar Gasto')),
+      appBar: AppBar(title: Text('Editar Gasto')),
       body: Padding(
         padding: EdgeInsets.all(16.0),
         child: Form(
@@ -82,22 +75,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 onChanged: (value) => setState(() => _category = value!),
               ),
               SizedBox(height: 20),
-              Row(
-                children: [
-                  Text(
-                    _selectedDate == null ? 'Seleccione fecha' : DateFormat('dd/MM/yyyy').format(_selectedDate!),
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.calendar_today),
-                    onPressed: () => _selectDate(context),
-                  ),
-                ],
-              ),
-              SizedBox(height: 20),
               ElevatedButton(
-                onPressed: _guardarGasto,
-                child: Text('Guardar Gasto'),
+                onPressed: _updateGasto,
+                child: Text('Guardar Cambios'),
               ),
             ],
           ),
